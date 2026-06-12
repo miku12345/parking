@@ -31,6 +31,28 @@ def get_logs(limit: int = 50, spot_id: str | None = None):
         results = [item for item in results if item.get("spot_id") == spot_id]
     return results
 
+def get_all_logs(limit: int = 10000):
+    # used by the AI prediction module as training data
+    return [doc.to_dict() for doc in parking_logs_col.limit(limit).stream()]
+
+def add_logs_batch(rows: list[dict]):
+    # batched writes so seeding thousands of synthetic logs stays fast/cheap
+    batch = db.batch()
+    pending = 0
+    written = 0
+    for row in rows:
+        batch.set(parking_logs_col.document(), row)
+        pending += 1
+        if pending >= 450:
+            batch.commit()
+            written += pending
+            batch = db.batch()
+            pending = 0
+    if pending:
+        batch.commit()
+        written += pending
+    return written
+
 def create_reservation(data: dict):
     reservations_col.document(data["reservation_id"]).set(data)
 
