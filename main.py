@@ -5,6 +5,7 @@ from routers.spots import router as spots_router
 from routers.anomalies import router as anomalies_router
 from routers.reservations import router as reservations_router
 from routers.logs import router as logs_router
+from routers.prediction import router as prediction_router
 
 app = FastAPI(title="Parking Backend")
 
@@ -20,6 +21,7 @@ app.include_router(spots_router)
 app.include_router(anomalies_router)
 app.include_router(reservations_router)
 app.include_router(logs_router)
+app.include_router(prediction_router)
 
 @app.get("/")
 def root():
