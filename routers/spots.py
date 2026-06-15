@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from services.spot_service import process_spot_update, list_spots, get_one_spot
+from device_security import verify_device_signature
 
 router = APIRouter()
 
@@ -11,6 +12,6 @@ def get_spots():
 def get_spot(spot_id: str):
     return get_one_spot(spot_id)
 
-@router.post("/spots/update")
+@router.post("/spots/update", dependencies=[Depends(verify_device_signature)])
 def update_spot(payload: dict):
     return process_spot_update(payload)
