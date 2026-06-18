@@ -47,7 +47,6 @@ async def verify_device_signature(request: Request):
         )
 
     secret = DEVICE_SECRETS.get(device_id)
-
     if not secret:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -63,7 +62,6 @@ async def verify_device_signature(request: Request):
         )
 
     now = int(time.time())
-
     if abs(now - ts) > ALLOWED_TIME_DRIFT_SECONDS:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -87,24 +85,19 @@ async def verify_device_signature(request: Request):
         body_hash=body_hash,
     )
 
-    expected_signature = hmac.new(
+    expected = hmac.new(
         secret.encode("utf-8"),
         message.encode("utf-8"),
         hashlib.sha256,
     ).hexdigest()
 
-    if not hmac.compare_digest(expected_signature, signature):
+    if not hmac.compare_digest(expected, signature):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid signature"
         )
 
-    ok = reserve_nonce(
-        device_id=device_id,
-        nonce=nonce,
-        timestamp=ts,
-    )
-
+    ok = reserve_nonce(device_id=device_id, nonce=nonce, timestamp=ts)
     if not ok:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
