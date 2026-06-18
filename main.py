@@ -17,11 +17,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(spots_router, prefix="/api")
-app.include_router(anomalies_router, prefix="/api")
-app.include_router(reservations_router, prefix="/api")
-app.include_router(logs_router, prefix="/api")
-app.include_router(prediction_router, prefix="/api")
+app.include_router(spots_router)
+app.include_router(anomalies_router)
+app.include_router(reservations_router)
+app.include_router(logs_router)
+app.include_router(prediction_router)
 
 @app.get("/")
 def root():

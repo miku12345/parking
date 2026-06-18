@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import DashboardStats from '../components/DashboardStats.vue'
 import ParkingGrid from '../components/ParkingGrid.vue'
 
@@ -9,10 +9,15 @@ const reserveForm = ref({ spot_id: '', reserved_plate: '' })
 const isReserving = ref(false)
 const reserveError = ref('')
 const reserveSuccess = ref('')
+const hasAdminKey = ref(false)
 
 const spots = computed(() => gridRef.value?.spots || [])
 const availableSpots = computed(() => spots.value.filter(s => s.status === 'available' || s.status === 'free'))
 const loading = computed(() => gridRef.value?.loading || false)
+
+onMounted(() => {
+  hasAdminKey.value = !!sessionStorage.getItem('admin_api_key')
+})
 
 function openModal() {
   showReserveModal.value = true
@@ -73,7 +78,7 @@ async function submitReservation() {
         </p>
       </div>
       
-      <div class="flex items-center gap-3">
+      <div v-if="hasAdminKey" class="flex items-center gap-3">
         <button @click="openModal" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold tracking-wide rounded-xl transition-all shadow-lg shadow-indigo-200/50 hover:shadow-indigo-300/50 hover:-translate-y-0.5 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           Reserve Spot
