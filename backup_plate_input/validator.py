@@ -1,7 +1,7 @@
 VALID_SPOT_STATUS = {"free", "reserved", "occupied"}
 
 def validate_spot_payload(payload: dict):
-    required_fields = ["spot_id", "status", "reserved_plate"]
+    required_fields = ["spot_id", "status", "reserved_plate", "current_plate"]
 
     for field in required_fields:
         if field not in payload:
@@ -16,18 +16,13 @@ def validate_spot_payload(payload: dict):
     if not isinstance(payload["reserved_plate"], str):
         return False, "reserved_plate must be a string"
 
-    if "current_plate" in payload and not isinstance(payload["current_plate"], str):
+    if not isinstance(payload["current_plate"], str):
         return False, "current_plate must be a string"
 
-    if "current_plate_image_base64" in payload and not isinstance(payload["current_plate_image_base64"], str):
-        return False, "current_plate_image_base64 must be a string"
-
-    current_plate = payload.get("current_plate", "")
-    current_plate_image_base64 = payload.get("current_plate_image_base64", "")
-
-    if payload["status"] == "occupied":
-        if not current_plate and not current_plate_image_base64:
-            return False, "occupied status requires current_plate or current_plate_image_base64"
+    # 先預留圖片欄位，現在收但不存
+    if "current_plate_image_base64" in payload:
+        if not isinstance(payload["current_plate_image_base64"], str):
+            return False, "current_plate_image_base64 must be a string"
 
     return True, "ok"
 

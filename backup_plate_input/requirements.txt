@@ -2,4 +2,3 @@ fastapi
 uvicorn[standard]
 google-cloud-firestore
 scikit-learn
-google-cloud-vision

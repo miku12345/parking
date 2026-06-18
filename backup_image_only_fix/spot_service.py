@@ -62,13 +62,16 @@ def process_spot_update(payload: dict):
 
     final_plate = input_plate
 
+    # 只有圖片，沒有文字 -> 用 OCR 結果
     if not final_plate and recognized_plate:
         final_plate = recognized_plate
         recognition_used = True
 
+    # 文字 + 圖片都有，但不同 -> 不擋，只標記 mismatch
     if input_plate and recognized_plate and input_plate != recognized_plate:
         plate_mismatch = True
 
+    # occupied 時最後還是沒有車牌 -> 擋下來
     if status == "occupied" and not final_plate:
         add_anomaly_event({
             "event_id": f"evt_{int(datetime.now().timestamp())}",
@@ -83,6 +86,7 @@ def process_spot_update(payload: dict):
             "saved_to_parking_db": False,
         }
 
+    # free 時仍照舊清空 current_plate
     if status == "free":
         final_plate = ""
 
