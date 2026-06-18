@@ -1,13 +1,29 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import ParkingGrid from '../components/ParkingGrid.vue'
 
+const gridRef = ref(null)
 const isAuthenticated = ref(false)
 const apiKey = ref('')
 const loginError = ref('')
 
 const logs = ref([])
 const anomalies = ref([])
+const reservations = ref([])
 const loading = ref(false)
+const selectedSpotId = ref(null)
+
+const filteredLogs = computed(() => {
+  if (!selectedSpotId.value) return logs.value
+  return logs.value.filter(l => String(l.spot_id) === String(selectedSpotId.value))
+})
+
+function handleViewLogs(spotId) {
+  selectedSpotId.value = spotId
+  setTimeout(() => {
+    document.getElementById('logs-section')?.scrollIntoView({ behavior: 'smooth' })
+  }, 100)
+}
 
 onMounted(() => {
   const savedKey = sessionStorage.getItem('admin_api_key')
@@ -18,6 +34,9 @@ onMounted(() => {
 })
 
 async function login() {
+  isAuthenticated.value = true
+  loading.value = false
+
   if (!apiKey.value.trim()) {
     loginError.value = 'Please enter an API Key'
     return
@@ -28,20 +47,20 @@ async function login() {
   
   try {
     // Attempt to fetch data with the provided key to verify
-    const [logsRes, anomRes] = await Promise.all([
-      fetch('/api/logs', { headers: { 'X-API-Key': apiKey.value } }),
-      fetch('/api/anomalies', { headers: { 'X-API-Key': apiKey.value } })
+    const [anomRes, resRes] = await Promise.all([
+      fetch('/api/anomalies', { headers: { 'X-API-Key': apiKey.value } }),
+      fetch('/api/reservations', { headers: { 'X-API-Key': apiKey.value } })
     ])
     
-    if (!logsRes.ok || !anomRes.ok) {
-      if (logsRes.status === 401 || anomRes.status === 401) {
+    if (!anomRes.ok || !resRes.ok) {
+      if (anomRes.status === 401 || resRes.status === 401) {
         throw new Error('Invalid API Key')
       }
       throw new Error('Failed to fetch admin data')
     }
     
-    logs.value = await logsRes.json()
     anomalies.value = await anomRes.json()
+    reservations.value = await resRes.json()
     
     isAuthenticated.value = true
     sessionStorage.setItem('admin_api_key', apiKey.value)
@@ -60,6 +79,7 @@ function logout() {
   apiKey.value = ''
   logs.value = []
   anomalies.value = []
+  reservations.value = []
   sessionStorage.removeItem('admin_api_key')
 }
 
@@ -136,6 +156,46 @@ function formatDate(isoString) {
       </div>
 
       <div class="grid grid-cols-1 gap-8">
+        <!-- Reservations Section -->
+        <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-xl shadow-slate-200/50">
+          <div class="flex items-center gap-2 mb-6">
+            <div class="p-2 bg-blue-100 rounded-lg text-blue-600">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            </div>
+            <h2 class="text-xl font-bold text-slate-900">Active Reservations</h2>
+          </div>
+          
+          <div class="overflow-x-auto rounded-xl border border-slate-200">
+            <table class="w-full text-sm text-left">
+              <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th scope="col" class="px-6 py-4 font-semibold">Created At</th>
+                  <th scope="col" class="px-6 py-4 font-semibold">Expires At</th>
+                  <th scope="col" class="px-6 py-4 font-semibold">Spot ID</th>
+                  <th scope="col" class="px-6 py-4 font-semibold">Reserved Plate</th>
+                  <th scope="col" class="px-6 py-4 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-200">
+                <tr v-if="reservations.length === 0">
+                  <td colspan="5" class="px-6 py-8 text-center text-slate-500">No active reservations.</td>
+                </tr>
+                <tr v-for="(res, i) in reservations" :key="i" class="hover:bg-slate-50 transition-colors">
+                  <td class="px-6 py-4 whitespace-nowrap text-slate-600 font-medium">{{ formatDate(res.created_at) }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-slate-600 font-medium">{{ formatDate(res.expired_at) }}</td>
+                  <td class="px-6 py-4 font-semibold text-slate-900">{{ res.spot_id }}</td>
+                  <td class="px-6 py-4 text-slate-600 font-mono">{{ res.reserved_plate }}</td>
+                  <td class="px-6 py-4">
+                    <span class="px-2.5 py-1 text-xs font-semibold rounded-full border uppercase tracking-wide bg-blue-50 text-blue-700 border-blue-200">
+                      {{ res.status }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- Anomalies Section -->
         <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-xl shadow-slate-200/50">
           <div class="flex items-center gap-2 mb-6">
@@ -174,13 +234,23 @@ function formatDate(isoString) {
           </div>
         </div>
 
+      <div class="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 shadow-xl shadow-slate-200/50">
+        <ParkingGrid ref="gridRef" :isAdmin="true" @view-logs="handleViewLogs" />
+      </div>
         <!-- Logs Section -->
-        <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-xl shadow-slate-200/50">
-          <div class="flex items-center gap-2 mb-6">
-            <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+        <div id="logs-section" class="bg-white border border-slate-200 rounded-3xl p-6 shadow-xl shadow-slate-200/50">
+          <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-2">
+              <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+              </div>
+              <h2 class="text-xl font-bold text-slate-900">
+                Recent Spot Logs <span v-if="selectedSpotId" class="text-indigo-600 ml-2 text-sm font-semibold px-2 py-0.5 bg-indigo-50 rounded-full border border-indigo-100">Spot {{ selectedSpotId }}</span>
+              </h2>
             </div>
-            <h2 class="text-xl font-bold text-slate-900">System Logs</h2>
+            <button v-if="selectedSpotId" @click="selectedSpotId = null" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors border border-slate-200">
+              Clear Filter
+            </button>
           </div>
           
           <div class="overflow-x-auto rounded-xl border border-slate-200">
@@ -194,10 +264,13 @@ function formatDate(isoString) {
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-200">
-                <tr v-if="logs.length === 0">
-                  <td colspan="4" class="px-6 py-8 text-center text-slate-500">No recent logs available.</td>
+                <tr v-if="filteredLogs.length === 0">
+                  <td colspan="4" class="px-6 py-8 text-center text-slate-500">
+                    <span v-if="selectedSpotId">No logs found for this spot.</span>
+                    <span v-else>No recent logs available.</span>
+                  </td>
                 </tr>
-                <tr v-for="(log, i) in logs" :key="i" class="hover:bg-slate-50 transition-colors">
+                <tr v-for="(log, i) in filteredLogs" :key="i" class="hover:bg-slate-50 transition-colors">
                   <td class="px-6 py-4 whitespace-nowrap text-slate-600 font-medium">{{ formatDate(log.timestamp) }}</td>
                   <td class="px-6 py-4 font-semibold text-slate-900">{{ log.spot_id }}</td>
                   <td class="px-6 py-4">
@@ -220,7 +293,6 @@ function formatDate(isoString) {
           </div>
         </div>
       </div>
-      
     </div>
   </div>
 </template>

@@ -9,6 +9,8 @@ const props = defineProps({
   }
 })
 
+const emit = defineEmits(['view-logs'])
+
 const spots = ref([])
 const loading = ref(true)
 const error = ref(null)
@@ -58,7 +60,7 @@ defineExpose({ spots, loading })
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h2 class="text-xl font-bold text-slate-900 tracking-tight">Live Floor Map</h2>
+        <h2 class="text-xl font-bold text-slate-900 tracking-tight">Live Status Map</h2>
         <p class="text-sm text-slate-500 mt-1">Real-time status of all parking spaces</p>
       </div>
       
@@ -87,10 +89,27 @@ defineExpose({ spots, loading })
       </div>
     </div>
     
-    <div v-else>
+    <div v-else class="max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4" role="list">
-        <ParkingSpot v-for="s in spots" :key="s.id" :spot="s" :isAdmin="isAdmin" />
+        <ParkingSpot v-for="s in spots" :key="s.id" :spot="s" :isAdmin="isAdmin" @view-logs="emit('view-logs', $event)" />
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+</style>

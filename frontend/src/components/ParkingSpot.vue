@@ -6,7 +6,13 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  isAdmin: {
+    type: Boolean,
+    default: false
+  }
 })
+
+const emit = defineEmits(['view-logs'])
 
 const statusConfig = computed(() => {
   switch (props.spot.status) {
@@ -45,14 +51,20 @@ const statusConfig = computed(() => {
   }
 })
 
+function handleClick() {
+  if (props.isAdmin) {
+    emit('view-logs', props.spot.spot_id || props.spot.id)
+  }
+}
 </script>
 
 <template>
   <div 
-    class="group relative flex flex-col items-center justify-center p-4 min-h-[100px] rounded-2xl border transition-all duration-300 hover:-translate-y-1 bg-white"
-    :class="[statusConfig.bg, statusConfig.border, statusConfig.shadow]"
+    class="group relative flex flex-col items-center justify-center p-4 min-h-[100px] rounded-2xl border transition-all duration-300 bg-white"
+    :class="[statusConfig.bg, statusConfig.border, statusConfig.shadow, isAdmin ? 'cursor-pointer hover:-translate-y-1' : '']"
     role="listitem" 
     :aria-label="`${spot.label} ${spot.status}`"
+    @click="handleClick"
   >
     <!-- Status Indicator Dot -->
     <div class="absolute top-3 right-3 w-2 h-2 rounded-full" :class="statusConfig.indicator">
@@ -60,14 +72,21 @@ const statusConfig = computed(() => {
     </div>
     
     <div class="text-xl font-bold tracking-tight text-slate-900 mb-1 drop-shadow-sm">
-      {{ spot.label || `${spot.spot_id}` }}
+      {{ spot.label || `${spot.spot_id || spot.id}` }}
     </div>
     
     <div 
-      class="text-[0.65rem] uppercase tracking-wider font-semibold rounded-full px-2.5 py-0.5 border bg-white"
+      class="text-[0.65rem] uppercase tracking-wider font-semibold rounded-full px-2.5 py-0.5 border bg-white mb-2"
       :class="[statusConfig.text, statusConfig.border]"
     >
       {{ spot.status }}
+    </div>
+    
+    <!-- Current Plate Display (if occupied/reserved) -->
+    <div v-if="(spot.status === 'occupied' || spot.status === 'reserved') && spot.current_plate && isAdmin" class="mt-auto w-full">
+      <div class="px-2 py-1 text-[0.8rem] font-mono font-bold text-slate-800 border border-black-400 rounded flex justify-center uppercase tracking-widest shadow-sm whitespace-nowrap">
+        {{ spot.current_plate }}
+      </div>
     </div>
   </div>
 </template>
