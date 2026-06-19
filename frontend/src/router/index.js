@@ -15,6 +15,11 @@ const router = createRouter({
       name: 'admin',
       component: AdminView,
     },
+    {
+      path: '/admin/prediction',
+      name: 'prediction-admin',
+      component: () => import('../views/PredictionAdminView.vue'),
+    },
   ],
 })
 

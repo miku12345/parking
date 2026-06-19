@@ -18,11 +18,71 @@ const filteredLogs = computed(() => {
   return logs.value.filter(l => String(l.spot_id) === String(selectedSpotId.value))
 })
 
-function handleViewLogs(spotId) {
+const logPage = ref(1)
+const logsPerPage = 10
+
+const paginatedLogs = computed(() => {
+  const start = (logPage.value - 1) * logsPerPage
+  return filteredLogs.value.slice(start, start + logsPerPage)
+})
+
+const totalLogPages = computed(() => {
+  return Math.ceil(filteredLogs.value.length / logsPerPage) || 1
+})
+
+function prevLogPage() {
+  if (logPage.value > 1) logPage.value--
+}
+
+function nextLogPage() {
+  if (logPage.value < totalLogPages.value) logPage.value++
+}
+
+const anomalyPage = ref(1)
+const anomaliesPerPage = 5
+
+const paginatedAnomalies = computed(() => {
+  const start = (anomalyPage.value - 1) * anomaliesPerPage
+  return anomalies.value.slice(start, start + anomaliesPerPage)
+})
+
+const totalAnomalyPages = computed(() => {
+  return Math.ceil(anomalies.value.length / anomaliesPerPage) || 1
+})
+
+function prevAnomalyPage() {
+  if (anomalyPage.value > 1) anomalyPage.value--
+}
+
+function nextAnomalyPage() {
+  if (anomalyPage.value < totalAnomalyPages.value) anomalyPage.value++
+}
+
+async function fetchLogs(spotId = null) {
+  try {
+    const url = spotId ? `/api/logs?spot_id=${spotId}&limit=50` : '/api/logs?limit=50'
+    const res = await fetch(url, { headers: { 'X-API-Key': apiKey.value } })
+    if (res.ok) {
+      const data = await res.json()
+      logs.value = data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      logPage.value = 1
+    }
+  } catch (err) {
+    console.error('Failed to fetch logs', err)
+  }
+}
+
+async function handleViewLogs(spotId) {
   selectedSpotId.value = spotId
+  await fetchLogs(spotId)
   setTimeout(() => {
     document.getElementById('logs-section')?.scrollIntoView({ behavior: 'smooth' })
   }, 100)
+}
+
+function clearLogFilter() {
+  selectedSpotId.value = null
+  fetchLogs()
 }
 
 onMounted(() => {
@@ -47,20 +107,26 @@ async function login() {
   
   try {
     // Attempt to fetch data with the provided key to verify
-    const [anomRes, resRes] = await Promise.all([
+    const [anomRes, resRes, logsRes] = await Promise.all([
       fetch('/api/anomalies', { headers: { 'X-API-Key': apiKey.value } }),
-      fetch('/api/reservations', { headers: { 'X-API-Key': apiKey.value } })
+      fetch('/api/reservations', { headers: { 'X-API-Key': apiKey.value } }),
+      fetch('/api/logs?limit=50', { headers: { 'X-API-Key': apiKey.value } })
     ])
     
-    if (!anomRes.ok || !resRes.ok) {
-      if (anomRes.status === 401 || resRes.status === 401) {
+    if (!anomRes.ok || !resRes.ok || !logsRes.ok) {
+      if (anomRes.status === 401 || resRes.status === 401 || logsRes.status === 401) {
         throw new Error('Invalid API Key')
       }
       throw new Error('Failed to fetch admin data')
     }
     
-    anomalies.value = await anomRes.json()
-    reservations.value = await resRes.json()
+    const anomaliesData = await anomRes.json()
+    const reservationsData = await resRes.json()
+    const logsData = await logsRes.json()
+    
+    anomalies.value = anomaliesData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    reservations.value = reservationsData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    logs.value = logsData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
     
     isAuthenticated.value = true
     sessionStorage.setItem('admin_api_key', apiKey.value)
@@ -79,6 +145,7 @@ function logout() {
   apiKey.value = ''
   logs.value = []
   anomalies.value = []
+  anomalyPage.value = 1
   reservations.value = []
   sessionStorage.removeItem('admin_api_key')
 }
@@ -145,6 +212,13 @@ function formatDate(isoString) {
           </p>
         </div>
         <div class="flex items-center gap-3">
+                      <RouterLink 
+              to="/admin/prediction" 
+              class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors border border-slate-200 shadow-sm flex items-center gap-2"
+              exact-active-class="bg-white !text-indigo-600 border-slate-200 shadow-sm"
+            >
+              Availability Prediction
+            </RouterLink>
           <button @click="login" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors border border-slate-200 shadow-sm flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg>
             Refresh
@@ -219,7 +293,7 @@ function formatDate(isoString) {
                 <tr v-if="anomalies.length === 0">
                   <td colspan="4" class="px-6 py-8 text-center text-slate-500">No anomalies detected.</td>
                 </tr>
-                <tr v-for="(anom, i) in anomalies" :key="i" class="hover:bg-slate-50 transition-colors">
+                <tr v-for="(anom, i) in paginatedAnomalies" :key="i" class="hover:bg-slate-50 transition-colors">
                   <td class="px-6 py-4 whitespace-nowrap text-slate-600 font-medium">{{ formatDate(anom.timestamp) }}</td>
                   <td class="px-6 py-4 font-semibold text-slate-900">{{ anom.spot_id || 'N/A' }}</td>
                   <td class="px-6 py-4">
@@ -231,6 +305,23 @@ function formatDate(isoString) {
                 </tr>
               </tbody>
             </table>
+          </div>
+          <div class="flex items-center justify-between pt-4 mt-2" v-if="anomalies.length > anomaliesPerPage">
+            <button 
+              @click="prevAnomalyPage" 
+              :disabled="anomalyPage === 1"
+              class="px-4 py-2 text-sm font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+            >
+              Previous
+            </button>
+            <span class="text-sm text-slate-500 font-medium">Page {{ anomalyPage }} of {{ totalAnomalyPages }}</span>
+            <button 
+              @click="nextAnomalyPage" 
+              :disabled="anomalyPage === totalAnomalyPages"
+              class="px-4 py-2 text-sm font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+            >
+              Next
+            </button>
           </div>
         </div>
 
@@ -248,7 +339,7 @@ function formatDate(isoString) {
                 Recent Spot Logs <span v-if="selectedSpotId" class="text-indigo-600 ml-2 text-sm font-semibold px-2 py-0.5 bg-indigo-50 rounded-full border border-indigo-100">Spot {{ selectedSpotId }}</span>
               </h2>
             </div>
-            <button v-if="selectedSpotId" @click="selectedSpotId = null" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors border border-slate-200">
+            <button v-if="selectedSpotId" @click="clearLogFilter" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors border border-slate-200">
               Clear Filter
             </button>
           </div>
@@ -270,7 +361,7 @@ function formatDate(isoString) {
                     <span v-else>No recent logs available.</span>
                   </td>
                 </tr>
-                <tr v-for="(log, i) in filteredLogs" :key="i" class="hover:bg-slate-50 transition-colors">
+                <tr v-for="(log, i) in paginatedLogs" :key="i" class="hover:bg-slate-50 transition-colors">
                   <td class="px-6 py-4 whitespace-nowrap text-slate-600 font-medium">{{ formatDate(log.timestamp) }}</td>
                   <td class="px-6 py-4 font-semibold text-slate-900">{{ log.spot_id }}</td>
                   <td class="px-6 py-4">
@@ -290,6 +381,23 @@ function formatDate(isoString) {
                 </tr>
               </tbody>
             </table>
+          </div>
+          <div class="flex items-center justify-between pt-4 mt-2" v-if="filteredLogs.length > logsPerPage">
+            <button 
+              @click="prevLogPage" 
+              :disabled="logPage === 1"
+              class="px-4 py-2 text-sm font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+            >
+              Previous
+            </button>
+            <span class="text-sm text-slate-500 font-medium">Page {{ logPage }} of {{ totalLogPages }}</span>
+            <button 
+              @click="nextLogPage" 
+              :disabled="logPage === totalLogPages"
+              class="px-4 py-2 text-sm font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+            >
+              Next
+            </button>
           </div>
         </div>
       </div>
