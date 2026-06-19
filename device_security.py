@@ -4,7 +4,8 @@ import hmac
 import hashlib
 from fastapi import Request, HTTPException, status
 from repositories.device_nonce_repo import reserve_nonce
-
+from repositories.firestore_repo import add_anomaly_event
+from datetime import datetime, timezone
 
 DEVICE_SECRETS = {
     "pico-001": os.getenv("PICO_001_SECRET", "")
@@ -32,6 +33,14 @@ def build_message(method: str, path: str, timestamp: str, nonce: str, body_hash:
         body_hash,
     ])
 
+def log_security_breach(device_id: str, reason: str):
+    add_anomaly_event({
+        "event_id": f"sec_{int(datetime.now().timestamp())}",
+        "spot_id": "SYSTEM", 
+        "anomaly_type": "security_breach",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "detail": f"Device: {device_id} - Reason: {reason}"
+    })
 
 async def verify_device_signature(request: Request):
     device_id = request.headers.get("X-Device-Id")
@@ -94,6 +103,7 @@ async def verify_device_signature(request: Request):
     ).hexdigest()
 
     if not hmac.compare_digest(expected_signature, signature):
+        log_security_breach(device_id, "Invalid signature")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid signature"
@@ -106,9 +116,10 @@ async def verify_device_signature(request: Request):
     )
 
     if not ok:
+        log_security_breach(device_id, "Replay detected (Nonce already used)")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Replay detected"
         )
-
+    
     return True

@@ -83,6 +83,16 @@ def process_spot_update(payload: dict):
             "saved_to_parking_db": False,
         }
 
+    if status == "occupied" and payload.get("reserved_plate"):
+        if final_plate != payload["reserved_plate"]:
+            add_anomaly_event({
+                "event_id": f"evt_{int(datetime.now().timestamp())}",
+                "spot_id": payload["spot_id"],
+                "anomaly_type": "plate_mismatch_with_reservation",
+                "timestamp": utc_iso(),
+                "detail": f"The reserved plate {payload['reserved_plate']} does not match the actual parked plate {final_plate}",
+            })
+    
     if status == "free":
         final_plate = ""
 

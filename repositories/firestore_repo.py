@@ -1,8 +1,12 @@
 import os
 from google.cloud import firestore
+import requests
+from dotenv import load_dotenv
 
 PROJECT_ID = os.getenv("FIRESTORE_PROJECT", "project-8f03a674-75e0-47bd-9a3")
 DATABASE_ID = os.getenv("FIRESTORE_DATABASE", "parkingspots")
+load_dotenv()
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
 db = firestore.Client(project=PROJECT_ID, database=DATABASE_ID)
 
@@ -61,6 +65,16 @@ def get_reservations(limit: int = 50):
 
 def add_anomaly_event(data: dict):
     anomaly_events_col.add(data)
+    if DISCORD_WEBHOOK_URL:
+        try:
+            msg = f"⚠️ **停車場系統異常警報** ⚠️\n" \
+                  f"**車位**: {data.get('spot_id', 'N/A')}\n" \
+                  f"**類型**: {data.get('anomaly_type')}\n" \
+                  f"**詳情**: {data.get('detail')}"
+                  
+            requests.post(DISCORD_WEBHOOK_URL, json={"content": msg}, timeout=3)
+        except Exception as e:
+            print(f"Failed to send webhook: {e}")
 
 def get_recent_anomalies(limit: int = 50):
     return [doc.to_dict() for doc in anomaly_events_col.limit(limit).stream()]
