@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: ./frontend
+    container_name: parking-frontend
+    ports:
+      - "80:80"
+    restart: unless-stopped
