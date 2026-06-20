@@ -66,8 +66,33 @@ def add_logs_batch(rows: list[dict]):
 def create_reservation(data: dict):
     reservations_col.document(data["reservation_id"]).set(data)
 
-def get_reservations(limit: int = 50):
-    return [doc.to_dict() for doc in reservations_col.limit(limit).stream()]
+def get_reservations(limit: int = 50, active_only: bool = True):
+    """
+    Reservation API.
+
+    active_only=True:
+      只回傳 status == active，避免 Admin Active Reservations 顯示 cancelled。
+    """
+    if active_only:
+        docs = (
+            reservations_col
+            .where("status", "==", "active")
+            .limit(limit)
+            .stream()
+        )
+    else:
+        docs = reservations_col.limit(limit).stream()
+
+    results = []
+
+    for doc in docs:
+        data = doc.to_dict()
+        data.setdefault("reservation_id", doc.id)
+        results.append(data)
+
+    results.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    return results
+
 
 def get_active_reservation_for_spot(spot_id: str):
     """
@@ -155,3 +180,43 @@ def add_anomaly_event(data: dict):
 
 def get_recent_anomalies(limit: int = 50):
     return [doc.to_dict() for doc in anomaly_events_col.limit(limit).stream()]
+
+def get_active_reservations_from_parking_spots(limit: int = 50):
+    """
+    Admin Active Reservations 改看 parking_spots 的目前狀態。
+
+    只要車位還有 reserved_plate，就代表這個預約仍然有效。
+    即使 status 是 occupied / violation，也要顯示，
+    因為像 A01 這種違規佔用仍然有 active reservation。
+    """
+    docs = parking_spots_col.limit(500).stream()
+
+    results = []
+
+    for doc in docs:
+        data = doc.to_dict() or {}
+
+        spot_id = data.get("spot_id") or doc.id
+        status = str(data.get("status") or "free").lower()
+        reserved_plate = str(data.get("reserved_plate") or "").strip()
+        current_plate = str(data.get("current_plate") or "").strip()
+
+        if not reserved_plate:
+            continue
+
+        if status == "free":
+            continue
+
+        results.append({
+            "reservation_id": data.get("active_reservation_id", ""),
+            "spot_id": spot_id,
+            "reserved_plate": reserved_plate,
+            "current_plate": current_plate,
+            "spot_status": status,
+            "status": "active",
+            "created_at": data.get("created_at", ""),
+            "expired_at": data.get("expired_at", ""),
+        })
+
+    results.sort(key=lambda x: x.get("spot_id", ""))
+    return results[:limit]
