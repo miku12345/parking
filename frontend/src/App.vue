@@ -38,7 +38,13 @@ import { RouterLink, RouterView } from 'vue-router'
             >
               Admin
             </RouterLink>
-
+            <RouterLink 
+              to="/admin/prediction" 
+              class="px-4 py-1.5 rounded-full text-sm font-medium text-slate-500 transition-all hover:text-slate-800 hover:bg-slate-200/50"
+              exact-active-class="bg-white !text-indigo-600 border-slate-200 shadow-sm"
+            >
+              Prediction
+            </RouterLink>
           </nav>
         </div>
       </div>

@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 
 from services.prediction_service import predict_point, forecast_day, train_model
 from services.data_generator import generate_synthetic_logs
+from security import require_api_key
 
 # weekday follows Python convention: Monday=0 .. Sunday=6
 router = APIRouter(prefix="/predict", tags=["prediction"])
@@ -20,12 +21,12 @@ def forecast(weekday: int = Query(..., ge=0, le=6)):
     return forecast_day(weekday=weekday)
 
 
-@router.post("/train")
+@router.post("/train", dependencies=[Depends(require_api_key)])
 def train():
     return train_model()
 
 
-@router.post("/seed")
+@router.post("/seed", dependencies=[Depends(require_api_key)])
 def seed(
     days: int = Query(14, ge=1, le=60),
     lot_size: int = Query(10, ge=1, le=50),

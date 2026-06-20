@@ -1,10 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 
-const isAuthenticated = ref(false)
-const apiKey = ref('')
-const loginError = ref('')
-
 const loading = ref(false)
 const seeding = ref(false)
 const training = ref(false)
@@ -15,51 +11,12 @@ const modelInfo = ref(null)
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
+const isAdmin = computed(() => !!sessionStorage.getItem('admin_api_key'))
+const adminApiKey = computed(() => sessionStorage.getItem('admin_api_key'))
+
 onMounted(() => {
-  const savedKey = sessionStorage.getItem('admin_api_key')
-  if (savedKey) {
-    apiKey.value = savedKey
-    login()
-  }
+  loadForecast()
 })
-
-async function login() {
-  if (!apiKey.value.trim()) {
-    loginError.value = 'Please enter an API Key'
-    return
-  }
-  
-  loginError.value = ''
-  loading.value = true
-  
-  try {
-    // Authenticate by checking anomalies, just like AdminView
-    const authRes = await fetch('/api/anomalies', { headers: { 'X-API-Key': apiKey.value } })
-    if (!authRes.ok) {
-      throw new Error('Invalid API Key')
-    }
-    
-    isAuthenticated.value = true
-    sessionStorage.setItem('admin_api_key', apiKey.value)
-    
-    // Now fetch initial forecast
-    await loadForecast()
-  } catch (err) {
-    loginError.value = err.message
-    isAuthenticated.value = false
-    sessionStorage.removeItem('admin_api_key')
-  } finally {
-    loading.value = false
-  }
-}
-
-function logout() {
-  isAuthenticated.value = false
-  apiKey.value = ''
-  forecastData.value = null
-  modelInfo.value = null
-  sessionStorage.removeItem('admin_api_key')
-}
 
 async function loadForecast() {
   try {
@@ -83,7 +40,10 @@ async function seedData() {
   
   seeding.value = true
   try {
-    const res = await fetch('/api/predict/seed?days=14&lot_size=20', { method: 'POST' })
+    const res = await fetch('/api/predict/seed?days=14&lot_size=20', { 
+      method: 'POST',
+      headers: { 'X-API-Key': adminApiKey.value }
+    })
     const data = await res.json()
     console.log('Seeded:', data)
     alert('Data seeding completed!')
@@ -99,7 +59,10 @@ async function seedData() {
 async function trainModel() {
   training.value = true
   try {
-    const res = await fetch('/api/predict/train', { method: 'POST' })
+    const res = await fetch('/api/predict/train', { 
+      method: 'POST',
+      headers: { 'X-API-Key': adminApiKey.value }
+    })
     const data = await res.json()
     console.log('Trained:', data)
     alert('Model training completed! Samples: ' + data.samples)
@@ -127,45 +90,7 @@ const maxSpots = computed(() => {
 <template>
   <div class="space-y-8 animate-fade-in max-w-5xl mx-auto">
     
-    <!-- Login Screen -->
-    <div v-if="!isAuthenticated" class="flex items-center justify-center min-h-[60vh]">
-      <div class="bg-white border border-slate-200 rounded-3xl p-8 md:p-10 shadow-xl shadow-slate-200/50 max-w-md w-full">
-        <div class="text-center mb-8">
-          <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-purple-50 text-purple-600 mb-4 border border-purple-100 shadow-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-            </svg>
-          </div>
-          <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Prediction Admin</h2>
-          <p class="text-sm text-slate-500 mt-2">Enter your backend API Key to manage AI models and forecasts.</p>
-        </div>
-        
-        <form @submit.prevent="login" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">API Key / Password</label>
-            <input 
-              type="password" 
-              v-model="apiKey"
-              class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-shadow"
-              placeholder="Enter key..."
-            />
-          </div>
-          <div v-if="loginError" class="text-sm text-rose-600 font-medium bg-rose-50 px-3 py-2 rounded-lg border border-rose-200">
-            {{ loginError }}
-          </div>
-          <button 
-            type="submit" 
-            :disabled="loading"
-            class="w-full px-4 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-70 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors shadow-md shadow-purple-200 flex justify-center items-center gap-2"
-          >
-            {{ loading ? 'Authenticating...' : 'Secure Login' }}
-          </button>
-        </form>
-      </div>
-    </div>
-
-    <!-- Admin Dashboard -->
-    <div v-else class="space-y-8">
+    <div class="space-y-8">
       <!-- Header -->
       <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-slate-200">
         <div>
@@ -174,11 +99,7 @@ const maxSpots = computed(() => {
             Manage the parking availability prediction model and view occupancy forecasts.
           </p>
         </div>
-        <div class="flex items-center gap-3">
-          <button @click="logout" class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm font-medium rounded-lg transition-colors border border-rose-200 shadow-sm">
-            Logout
-          </button>
-        </div>
+
       </div>
 
       <!-- Model Status & Actions -->
@@ -204,7 +125,7 @@ const maxSpots = computed(() => {
             </div>
           </div>
           
-          <div class="flex items-center gap-3 w-full md:w-auto">
+          <div v-if="isAdmin" class="flex items-center gap-3 w-full md:w-auto">
             <button 
               @click="seedData" 
               :disabled="seeding"
@@ -281,7 +202,6 @@ const maxSpots = computed(() => {
           Loading forecast...
         </div>
       </div>
-      
     </div>
   </div>
 </template>
