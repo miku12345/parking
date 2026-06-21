@@ -9,6 +9,7 @@ from repositories.firestore_repo import (
     add_parking_log,
     add_anomaly_event,
     get_reservations,
+    get_active_reservations_from_parking_spots,
 )
 
 def utc_iso():
@@ -48,7 +49,7 @@ def create_reservation_request(payload: dict):
 
     reservation_id = str(uuid4())[:8]
     created_at = datetime.now(timezone.utc)
-    expired_at = created_at + timedelta(hours=1)
+    expired_at = created_at + timedelta(days=30)
 
     reservation = {
         "reservation_id": reservation_id,
@@ -83,4 +84,7 @@ def create_reservation_request(payload: dict):
     }
 
 def list_reservation_items(limit: int = 50):
-    return get_reservations(limit=limit)
+    # Admin Active Reservations 改用 parking_spots 目前 reserved_plate 狀態。
+    # 這樣 A01 這種 violation / occupied 但仍有 reserved_plate 的車位也會顯示。
+    return get_active_reservations_from_parking_spots(limit=limit)
+

@@ -36,9 +36,10 @@ async function submitReservation() {
   reserveError.value = ''
   
   try {
+    const apiKey = sessionStorage.getItem("admin_api_key")
     const res = await fetch('/api/reserve', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json','X-API-Key': apiKey },
       body: JSON.stringify({
         spot_id: String(reserveForm.value.spot_id),
         reserved_plate: reserveForm.value.reserved_plate
