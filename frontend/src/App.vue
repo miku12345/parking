@@ -10,11 +10,8 @@ import { RouterLink, RouterView } from 'vue-router'
         <div class="flex items-center justify-between h-16 gap-4">
           <!-- Brand -->
           <RouterLink to="/" class="flex items-center gap-3 group">
-            <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 group-hover:bg-indigo-100 transition-colors shadow-sm">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
-                <path d="M9 16V8h4a2 2 0 0 1 0 4H9" />
-              </svg>
+            <div class="flex items-center justify-center w-10 h-10">
+              <img src="../src/assets/logo.svg" alt="logo" class="w-10 h-10" />
             </div>
             <div>
               <h1 class="text-base font-bold leading-tight text-slate-900 tracking-tight">IOT Smart parking system</h1>

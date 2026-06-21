@@ -70,7 +70,7 @@ async function submitReservation() {
       <div>
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-xs font-semibold tracking-wide uppercase mb-3 shadow-sm">
           <span class="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]"></span>
-          Operations Center
+          Smart Parking System
         </div>
         <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">Parking Spot Overview</h1>
         <p class="text-slate-500 mt-2 max-w-2xl text-sm md:text-base">

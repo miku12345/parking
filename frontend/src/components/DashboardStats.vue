@@ -14,13 +14,8 @@ const props = defineProps({
 
 const totalSpots = computed(() => props.spots.length)
 const availableSpots = computed(() => props.spots.filter(s => s.status === 'free').length)
-const occupiedSpots = computed(() => props.spots.filter(s => s.status === 'occupied').length)
+const occupiedSpots = computed(() => props.spots.filter(s => s.status === 'occupied' || s.status === 'violation').length)
 const reservedSpots = computed(() => props.spots.filter(s => s.status === 'reserved').length)
-
-const utilization = computed(() => {
-  if (totalSpots.value === 0) return 0;
-  return Math.round(((occupiedSpots.value + reservedSpots.value) / totalSpots.value) * 100);
-});
 
 </script>
 
@@ -75,22 +70,14 @@ const utilization = computed(() => {
     <div class="relative overflow-hidden bg-white border border-slate-200 shadow-sm rounded-2xl p-5 hover:border-indigo-300 transition-colors group">
       <div class="absolute inset-0 bg-indigo-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
       <div class="flex items-center justify-between mb-4 relative">
-        <h3 class="text-slate-500 text-sm font-medium">Utilization</h3>
+        <h3 class="text-slate-500 text-sm font-medium">Reserved</h3>
         <div class="p-2 bg-indigo-100 rounded-lg text-indigo-600">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
         </div>
       </div>
       <div class="flex items-baseline gap-2 relative">
         <span v-if="loading" class="h-9 w-16 bg-slate-200 animate-pulse rounded"></span>
-        <span v-else class="text-3xl font-bold text-slate-900">{{ utilization }}%</span>
-      </div>
-      
-      <!-- Progress Bar -->
-      <div class="mt-4 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden relative">
-        <div 
-          class="absolute top-0 left-0 h-full bg-indigo-500 rounded-full transition-all duration-1000 ease-out"
-          :style="{ width: loading ? '0%' : `${utilization}%` }"
-        ></div>
+        <span v-else class="text-3xl font-bold text-slate-900">{{ reservedSpots }}</span>
       </div>
     </div>
 

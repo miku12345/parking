@@ -94,7 +94,6 @@ onMounted(() => {
 })
 
 async function login() {
-  isAuthenticated.value = true
   loading.value = false
 
   if (!apiKey.value.trim()) {
