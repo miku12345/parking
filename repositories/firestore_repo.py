@@ -163,8 +163,8 @@ def cancel_active_reservations_for_spot(
 
 def add_anomaly_event(data: dict):
     anomaly_events_col.add(data)
-
-    if DISCORD_WEBHOOK_URL:
+    urgent_types = ["security_breach", "plate_mismatch_with_reservation"]
+    if DISCORD_WEBHOOK_URL and data.get("anomaly_type") in urgent_types:
         try:
             msg = (
                 f"⚠️ **停車場系統異常警報** ⚠️\n"
